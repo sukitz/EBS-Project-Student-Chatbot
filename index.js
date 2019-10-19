@@ -16,6 +16,15 @@ var stuName = "" ;
 var strText = "" ; 
 var strArr = "" ;
 
+var teacherArrive = false ;
+var stuStatus = "" ;     //arrive, late
+var getTeacherId = ""; 
+var getUserId = [] ;   
+var getStuId = "" ;
+var getStuName = "" ; 
+var onDatabase = false ;
+var timeStart = "" ;
+
 function getDateTime(dateTime) {
   var today = new Date();
   var date = today.getFullYear()+'-'+(today.getMonth()+1)+'-'+today.getDate();
@@ -35,7 +44,11 @@ firebase.initializeApp(firebaseConfig);
 var database = firebase.database();
 
 
-
+console.log("Getting teacher id from firebase");
+console.log(".");
+console.log(".");
+console.log(".");
+getTeacherIdFirebase();
 
 // webhook callback
 app.post('/webhook', line.middleware(config), (req, res) => {
@@ -67,22 +80,33 @@ app.post('/webhook', line.middleware(config), (req, res) => {
 const replyText = (token, texts) => {
   texts = Array.isArray(texts) ? texts : [texts];
   strText = String(texts);
-  strArr = strText.split(' ');                      // converted the string to an array and then checked: 
-  stuName = String(strArr[0] + " " + strArr[1]) ;   // stuName is string contain Firstname and Lastname
-  stuId = String(strArr[2]);                        //stuId is string contain student id number
-  
-  if(stuId.length !== 11) {                         //check student id is correct by length
-    
-    return client.replyMessage(token,texts.map((text) => 
-      ({ 'type':'text', 'text':'ข้อมูลไม่ถูกต้อง'}))); 
-      
+  if (strText == "I AM YOUR TEACHER") {
+    teacherArrive = true ;
+    firebase.database().ref('Teacher/').set(
+    {
+      "TeacherId" : userId,
+      "TeacherArrive" : teacherArrive
+      });
   } else {
-      writeRegisData(userId, stuName, stuId);
-      console.log(userId, stuName, stuId, getDateTime());
-      return client.replyMessage(token,texts.map((text) => 
-      ({ 'type':'text', 'text':'ลงทะเบียนเรียบร้อย : ' + text })));           // reply user 
-  
+      strArr = strText.split(' ');                      // converted the string to an array and then checked: 
+      stuName = String(strArr[0] + " " + strArr[1]) ;   // stuName is string contain Firstname and Lastname
+      stuId = String(strArr[2]);                        //stuId is string contain student id number
+      
+      if(stuId.length !== 11) {                         //check student id is correct by length
+        
+        return client.replyMessage(token,texts.map((text) => 
+          ({ 'type':'text', 'text':'ข้อมูลไม่ถูกต้อง'}))); 
+          
+      } else {
+          writeRegisData(userId, stuName, stuId);
+          console.log(userId, stuName, stuId, getDateTime());
+          return client.replyMessage(token,texts.map((text) => 
+          ({ 'type':'text', 'text':'ลงทะเบียนเรียบร้อย : ' + text })));           // reply user 
+      
+      }
   }
+  
+  
 };
 
 const replyTextbeacon = (token,texts) => {
@@ -126,12 +150,23 @@ function handleEvent(event) {
       return replyText(event.replyToken, `Got postback: ${data}`);
 
     case 'beacon':
-      writeArriveStuData();
-      return replyTextbeacon(event.replyToken, "เช็คชื่อเรียบร้อย  ");
-
+      if (event.beacon.type == "enter") {
+        if (userId == getTeacherId) {
+          teacherIsArrive();
+        }
+      } else if (event.beacon.type == "leave") {
+          console.log("leave");
+          if (userId == getTeacherId) {
+            teacherIsleave();
+          } else {
+              firebase.database.ref('/List').child(timeStart).child(userId).update({
+                "status" : "leave"});
+          }
+      }
     default:
       //throw new Error(`Unknown event: ${JSON.stringify(event)}`);
-  }
+  
+}
 }
 
 function handleText(message, replyToken) {
@@ -172,7 +207,7 @@ function writeRegisData(userId , stuName, stuId) {
     });
 }
 
-var getData = ""; 
+
 function writeArriveStuData() {
   firebase.database().ref('list/' + getDateTime()).child(userId).set(
     { "Student Name" : stuName,
@@ -188,3 +223,37 @@ function writeArriveStuData() {
     });
 });
 }
+
+function getTeacherIdFirebase() {
+  //when beacon detect check teacher id and teacher arrive 
+  //get teacher id from database 
+  if(getTeacherId == "" || getTeacherId == null) {
+    var getData = database.ref('Teacher').child("TeacherId").on('value',function(snapshot) {
+      getTeacherId = snapshot.val();
+      console.log("Teacher id is : " + getTeacherId);
+    });
+  } else {
+      console.log("Already have Teacher id : " + getTeacherId);
+  }
+
+}
+
+function teacherIsArrive() {
+  teacherArrive = true;
+  database.ref('Teacher').update({
+    "TeacherArrive" : teacherArrive});
+  console.log("Teacher is arrive motherfucker");
+  //start check by create time on database 
+  timeStart = getDateTime; 
+  //firebase.database().ref('List/').child(getDateTime()).set();
+  console.log("create time");    
+}
+
+
+function teacherIsleave() {
+  teacherArrive = false;
+  database.ref('Teacher').update({
+    "TeacherArrive" : teacherArrive});
+  console.log("Teacher is leave motherfucker");
+}
+
