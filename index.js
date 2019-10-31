@@ -10,15 +10,17 @@ const firebase = require('firebase');
 const client = new line.Client(config);
 
 const app = express();
+var date = "" ;
+var time = "" ;
+var dateTime = "" ;
+
 let userId = [];
 var stuId = "" ;
 var stuName = "" ;
 var strText = "" ; 
 var strArr = "" ;
-var arrArriveStu = [];
-var arrLeaveStu = [];
 
-var stuStatus = "1" ;     
+var stuStatus = "" ;  
 var getUserId = [] ;   
 var getStuId = "" ;
 var getStuName = "" ; 
@@ -44,11 +46,27 @@ var beacon_state ;
 
 var get_beacon = database.ref('statusBeacon').on('value',function(snapshot) {
   beacon_state = snapshot.val();
+  
+  if (beacon_state == "poweredOn") {
+  
+    var getStartAndEnd = database.ref('Date').on('value',function(snapshot) {
+    numOfDate = snapshot.numChildren();
+    if (numOfDate !== 0 || numOfDate !== null) {
+      database.ref('Date').child(numOfDate).once('value',function(snapshot) {
+        getEndTime = snapshot.val().End;
+        getStartTime = snapshot.val().start;
+        getLateTime = snapshot.val().late;
+        var one = new Date(snapshot.val().start);
+        var two = new Date(snapshot.val().End);
+        console.log("Class start at " + getStartTime + " to " + getEndTime);
+    
+        });
+        }
+      });
+  } else console.log("poweredOff");
 });
 
-var getStartAndEnd = database.ref('Date').on('value',function(snapshot) {
-  numOfDate = snapshot.numChildren();
-});
+
 
 
 app.post('/webhook', line.middleware(config), (req, res) => {
@@ -77,13 +95,16 @@ const replyText = (token, texts) => {
   texts = Array.isArray(texts) ? texts : [texts];
   if (beacon_state == "poweredOn") {
     strText = String(texts);
-    if (strText !== "ลงทะเบียนเรียบร้อยแล้ว") {
+    if (strText == 'ลงทะเบียนเรียบร้อยแล้ว') {
       return client.replyMessage(token,texts.map((text) =>
-        ({ 'type':'text', 'text':'ข้อมูลไม่ถูกต้อง'})));
-    } else {
-        return client.replyMessage(token,texts.map((text) =>
         ({ 'type':'text', 'text':'เดี๋ยวจะส่งข้อมูลการใช้ beacon ให้นะ'})));
-    }
+    } else if (strText == 'แก้ไขข้อมูลเรียบร้อยแล้ว') {
+        return client.replyMessage(token,texts.map((text) =>
+          ({ 'type':'text', 'text':'ระบบทำการแก้ไขข้อมูลให้แล้ว'})));
+        } else {
+        return client.replyMessage(token,texts.map((text) =>
+        ({ 'type':'text', 'text':'ข้อมูลไม่ถูกต้อง'})));
+          }
   }else {
       console.log("cannot registed");
       return client.replyMessage(token,texts.map((text) => 
@@ -177,9 +198,9 @@ app.listen(port, () => {
 
 function getDateTime(dateTime) {
   var today = new Date();
-  var date = today.getFullYear()+'-'+("0"+(today.getMonth()+1)).slice(-2)+'-'+("0"+(today.getDate())).slice(-2);
-  var time = ("0"+(today.getHours())).slice(-2) + ":" + ("0"+(today.getMinutes())).slice(-2);
-  var dateTime = date + " " + time;
+  date = today.getFullYear()+'-'+("0"+(today.getMonth()+1)).slice(-2)+'-'+("0"+(today.getDate())).slice(-2);
+  time = ("0"+(today.getHours())).slice(-2) + ":" + ("0"+(today.getMinutes())).slice(-2);
+  dateTime = date + " " + time;
   return dateTime;
 }
 
@@ -207,16 +228,60 @@ function getDateTime(dateTime) {
                                                     //~ // on database that store check the student arrive 
 
 function writeArriveStuData() {
-  if (arrArriveStu.indexOf(stuId) == "-1") {
-    console.log(getDateTime());
-    var date = getDateTime().slice(0, 10);
+  
+  var arriveTime = new Date(getDateTime());
+  var startTime = new Date(getStartTime);
+  var late = getLateTime;
+  console.log("late is : " + late)
+  console.log("start at : " + startTime);
+  console.log("arrive time is : "+ (arriveTime-startTime)/60/1000);
+  
+  if ((arriveTime-startTime)/60/1000 > late) {
+    // arrive and late
+      database.ref('Check').child(userId).child(date).child('checkName').once('value', function(snapshot) {
+          stuStatus = snapshot.val(); 
+          if (stuStatus == "0") {
+            firebase.database().ref('Check').child(userId).child(date).update({
+              "checkName" : "2"});
+            } else if (stuStatus == "1") {
+                firebase.database().ref('Check').child(userId).child(date).update({
+                "checkName" : "1"});
+              } else if (stuStatus == "3") {
+                firebase.database().ref('Check').child(userId).child(date).update({
+                "checkName" : "1"});
+              } else if (stuStatus == "4") {
+                firebase.database().ref('Check').child(userId).child(date).update({
+                "checkName" : "2"});
+              }
+        });
+    console.log("You are late motherfucker");
+  } else {
+    //arrive and TUN 
+      database.ref('Check').child(userId).child(date).child('checkName').once('value', function(snapshot) {
+          stuStatus = snapshot.val(); 
+          if (stuStatus == "0") {
+            firebase.database().ref('Check').child(userId).child(date).update({
+              "checkName" : "1"});
+            }
+        });
+    }
     
-    firebase.database().ref('Check').child(userId).child(date).update({
-      "checkName" : stuStatus});
-    arrArriveStu += stuId;
-  } else {console.log("student in the array");}
-      
 }
 
-//when techer turn off beacon, arrive array must reset
 
+
+function writeLeaveStuData() {
+  
+  database.ref('Check').child(userId).child(date).child('checkName').once('value', function(snapshot) {
+      stuStatus = snapshot.val(); 
+      if (stuStatus == "1") {
+        database.ref('Check').child(userId).child(date).update({
+          "checkName" : "3"
+          });
+      } else if (stuStatus == "2") {
+          database.ref('Check').child(userId).child(date).update({
+            "checkName" : "4"
+            });
+      }
+  });    
+} 
