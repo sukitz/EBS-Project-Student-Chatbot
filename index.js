@@ -9,11 +9,22 @@ const firebase = require('firebase');
 // create LINE SDK client
 const client = new line.Client(config);
 
+
+const message1 = {
+  type: 'text',
+  text: 'เริ่มเช็คชื่อแล้วจ้า'
+};
+const message2 = {
+  type: 'text',
+  text: 'ปิดการเช็คชื่อแล้วจ้า'
+};
+
+
 const app = express();
 var date = "";
 var time = "";
 var dateTime = "";
-
+let allUID = [];
 let userId = "";
 var stuId = "";
 var stuName = "";
@@ -43,10 +54,16 @@ firebase.initializeApp(firebaseConfig);
 var database = firebase.database();
 
 var beacon_state;
+var getallUID = database.ref('userId').once('value',function(snapshot) {
+      var UID = snapshot.val();
+      for(var eachUID in UID) {
+        allUID.push(eachUID)
+      }
+  }) 
 var get_beacon = database.ref('statusBeacon').on('value', function (snapshot) {
   beacon_state = snapshot.val();
   if (beacon_state == "poweredOn") {
-    var getStartAndEnd = database.ref('Date').on('value', function (snapshot) {
+    var getStartAndEnd = database.ref('Date').once('value', function (snapshot) {
       numOfDate = snapshot.numChildren();
       if (numOfDate !== 0 || numOfDate !== null) {
         database.ref('Date').child(numOfDate).once('value', function (snapshot) {
@@ -54,22 +71,24 @@ var get_beacon = database.ref('statusBeacon').on('value', function (snapshot) {
           getStartTime = snapshot.val().start;
           getLateTime = snapshot.val().late; 
           console.log("Class start at " + getStartTime + " to " + getEndTime);
-
+          client.multicast(allUID, 
+              [message1])
           var end = new Date(getEndTime);
           var job = schedule.scheduleJob(end, function () {
             database.ref().update({
               'statusBeacon':'poweredOff'
             })
-})
-
+          })
         });
       }
     });
-  } else console.log("poweredOff");
-  // broadcast to every user "powered off motherfucker"
+  } else if (beacon_state == "poweredOff") {
+    console.log("poweredOff");
+    console.log(allUID)
+      client.multicast(allUID, 
+              [message2])
+  }
 });
-
-
 
 
 app.post('/webhook', line.middleware(config), (req, res) => {
@@ -91,8 +110,6 @@ app.post('/webhook', line.middleware(config), (req, res) => {
       res.status(500).end();
     });
 });
-
-
 
 const replyText = (token, texts) => {
   texts = Array.isArray(texts) ? texts : [texts];
@@ -120,8 +137,6 @@ const replyArriveText = (replyToken, texts) => {
   return client.replyMessage(replyToken, texts.map((text) =>
     ({ 'type': 'text', 'text': text })));
 }
-
-
 
 // callback function to handle a single event
 function handleEvent(event) {
@@ -194,7 +209,6 @@ app.listen(port, () => {
   console.log(`listening on ${port}`);
 });
 
-
 function getDateTime(dateTime) {
   var today = new Date();
   date = today.getFullYear() + '-' + ("0" + (today.getMonth() + 1)).slice(-2) + '-' + ("0" + (today.getDate())).slice(-2);
@@ -204,39 +218,34 @@ function getDateTime(dateTime) {
 }
 
 function writeArriveStuData(replyToken, text) {
-
   var arriveTime = new Date(getDateTime());
   var startTime = new Date(getStartTime);
   var late = getLateTime;
   console.log("late is : " + late)
   console.log("start at : " + startTime);
   console.log("arrive time is : " + (arriveTime - startTime) / 60 / 1000);
-
   database.ref('Date').once('value', function (snapshot) {
     numOfClass = snapshot.numChildren()
-  })
-
-
   if ((arriveTime - startTime) / 60 / 1000 > late) {
 
     // arrive and late
     database.ref('Check').child(userId).child(numOfClass).child('checkName').once('value', function (snapshot) {
       stuStatus = snapshot.val();
-      if (stuStatus == "0") {
+      if (stuStatus == 0) {
         firebase.database().ref('Check').child(userId).child(numOfClass).update({
-          "checkName": "2"
+          "checkName": 2
         });
         replyArriveText(replyToken, 'เช็คชื่อครั้งที่ ' + numOfClass + ' มาสายนะ ' + time); //reply message to student when check name at first arrive in "late"
 
-      } else if (stuStatus == "1") {
+      } else if (stuStatus == 1) {``
         firebase.database().ref('Check').child(userId).child(numOfClass).update({
-          "checkName": "1"
+          "checkName": 1
         });
-      } else if (stuStatus == "3") {
+      } else if (stuStatus == 3) {
         firebase.database().ref('Check').child(userId).child(numOfClass).update({
-          "checkName": "1"
+          "checkName": 1
         });
-      } else if (stuStatus == "4") {
+      } else if (stuStatus == 4) {
         firebase.database().ref('Check').child(userId).child(numOfClass).update({
           "checkName": "2"
         });
@@ -246,14 +255,15 @@ function writeArriveStuData(replyToken, text) {
     //arrive and TUN 
     database.ref('Check').child(userId).child(numOfClass).child('checkName').once('value', function (snapshot) {
       stuStatus = snapshot.val();
-      if (stuStatus == "0") {
+      if (stuStatus == 0) {
         firebase.database().ref('Check').child(userId).child(numOfClass).update({
-          "checkName": "1"
+          "checkName": 1
         });
         replyArriveText(replyToken, 'เช็คชื่อครั้งที่ ' + numOfClass + ' มาทันนะ ' + time);
-      }
-    });
-  }
+        }
+      });
+    }
+  })
 }
 
 
