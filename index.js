@@ -42,6 +42,8 @@ var getStartTime = "";
 var getEndTime = "";
 var getLateTime = "";
 
+var tx = "";
+
 var schedule = require('node-schedule');
 
 var firebaseConfig = {
@@ -54,7 +56,7 @@ firebase.initializeApp(firebaseConfig);
 var database = firebase.database();
 
 var beacon_state;
-var getallUID = database.ref('userId').once('value',function(snapshot) {
+var getallUID = database.ref('userId').on('value',function(snapshot) {
       var UID = snapshot.val();
       for(var eachUID in UID) {
         allUID.push(eachUID)
@@ -121,6 +123,15 @@ const replyText = (token, texts) => {
     } else if (strText == 'แก้ไขข้อมูลเรียบร้อยแล้ว') {
       return client.replyMessage(token, texts.map((text) =>
         ({ 'type': 'text', 'text': 'ระบบทำการแก้ไขข้อมูลให้แล้ว' })));
+    } else if (strText == 'เช็คยอด') {
+        database.ref('Check').child(userId).once('value',function(snapshot) {
+          tx = snapshot.val()
+          if (tx !== null) {
+            console.log(tx)
+            console.log(token)
+            replyCheckAllTime(token,texts,tx)
+          } 
+        })  
     } else {
       return client.replyMessage(token, texts.map((text) =>
         ({ 'type': 'text', 'text': 'ข้อมูลไม่ถูกต้อง' })));
@@ -280,4 +291,12 @@ function writeLeaveStuData() {
       });
     }
   });
+}
+
+
+const replyCheckAllTime = (replyToken, texts,tx) => {
+  console.log(tx)
+  texts = Array.isArray(texts) ? texts : [texts];
+  return client.replyMessage(replyToken, texts.map((text) =>
+    ({ 'type': 'text', 'text': tx.toString() })));
 } 
