@@ -86,7 +86,6 @@ var get_beacon = database.ref('statusBeacon').on('value', function (snapshot) {
     });
   } else if (beacon_state == "poweredOff") {
     console.log("poweredOff");
-    console.log(allUID)
       client.multicast(allUID, 
               [message2])
   }
@@ -127,8 +126,6 @@ const replyText = (token, texts) => {
         database.ref('Check').child(userId).once('value',function(snapshot) {
           tx = snapshot.val()
           if (tx !== null) {
-            console.log(tx)
-            console.log(token)
             replyCheckAllTime(token,texts,tx)
           } 
         })  
@@ -215,6 +212,11 @@ function handleSticker(message, replyToken) {
   return replyText(replyToken, 'Got Sticker');
 }
 
+
+
+
+
+
 const port = config.port;
 app.listen(port, () => {
   console.log(`listening on ${port}`);
@@ -233,7 +235,6 @@ function writeArriveStuData(replyToken, text) {
   var startTime = new Date(getStartTime);
   var late = getLateTime;
   console.log("late is : " + late)
-  console.log("start at : " + startTime);
   console.log("arrive time is : " + (arriveTime - startTime) / 60 / 1000);
   database.ref('Date').once('value', function (snapshot) {
     numOfClass = snapshot.numChildren()
@@ -294,9 +295,23 @@ function writeLeaveStuData() {
 }
 
 
+
 const replyCheckAllTime = (replyToken, texts,tx) => {
-  console.log(tx)
   texts = Array.isArray(texts) ? texts : [texts];
+  var countMa = 0, countMaiMa = 0,countDod = 0,countSai = 0; 
+  var checkAll = "" ; 
+  for (var i = 0 ; i < tx.length; i++) {
+    if (i !== 0 ) {
+      switch(tx[i].checkName) {
+        case 0: countMaiMa += 1; break;
+        case 1: countMa += 1; break;
+        case 2: countSai += 1; break;
+        case 3: countDod += 1; break;
+        case 4: countDod += 1; break;
+      }
+    }
+  }
+  checkAll = "มาเรียน : " + countMa + " ครั้ง \nขาด : " + countMaiMa + " ครั้ง \nโดด : " + countDod + " ครั้ง \nสาย " + countSai + " ครั้ง"
   return client.replyMessage(replyToken, texts.map((text) =>
-    ({ 'type': 'text', 'text': tx.toString() })));
-} 
+    ({ 'type': 'text', 'text': checkAll })));
+}
