@@ -1,15 +1,9 @@
 'use strict';
-
 const line = require('@line/bot-sdk');
 const express = require('express');
 const config = require('./config.json');
 const firebase = require('firebase');
-
-
-// create LINE SDK client
 const client = new line.Client(config);
-
-
 const message1 = {
   type: 'text',
   text: 'เริ่มเช็คชื่อแล้วจ้า'
@@ -18,9 +12,8 @@ const message2 = {
   type: 'text',
   text: 'ปิดการเช็คชื่อแล้วจ้า'
 };
-
-
 const app = express();
+
 var date = "";
 var time = "";
 var dateTime = "";
@@ -41,7 +34,6 @@ var numOfDate = "";
 var getStartTime = "";
 var getEndTime = "";
 var getLateTime = "";
-
 var tx = "";
 
 var schedule = require('node-schedule');
@@ -90,7 +82,6 @@ var get_beacon = database.ref('statusBeacon').on('value', function (snapshot) {
               [message2])
   }
 });
-
 
 app.post('/webhook', line.middleware(config), (req, res) => {
   if (!Array.isArray(req.body.events)) {
@@ -146,7 +137,26 @@ const replyArriveText = (replyToken, texts) => {
     ({ 'type': 'text', 'text': text })));
 }
 
-// callback function to handle a single event
+const replyCheckAllTime = (replyToken, texts,tx) => {
+  texts = Array.isArray(texts) ? texts : [texts];
+  var countMa = 0, countMaiMa = 0,countDod = 0,countSai = 0; 
+  var checkAll = "" ; 
+  for (var i = 0 ; i < tx.length; i++) {
+    if (i !== 0 ) {
+      switch(tx[i].checkName) {
+        case 0: countMaiMa += 1; break;
+        case 1: countMa += 1; break;
+        case 2: countSai += 1; break;
+        case 3: countDod += 1; break;
+        case 4: countDod += 1; break;
+      }
+    }
+  }
+  checkAll = "มาเรียน: " + countMa + " ครั้ง\nขาดเรียน: " + countMaiMa + " ครั้ง\nโดดเรียน: " + countDod + " ครั้ง\nมาสาย: " + countSai + " ครั้ง"
+  return client.replyMessage(replyToken, texts.map((text) =>
+    ({ 'type': 'text', 'text': checkAll })));
+}
+
 function handleEvent(event) {
   switch (event.type) {
     case 'message':
@@ -167,7 +177,6 @@ function handleEvent(event) {
         default:
           throw new Error(`Unknown message: ${JSON.stringify(message)}`);
       }
-
     case 'beacon':
       if (event.beacon.type == "enter") {
         if (beacon_state == "poweredOn") {
@@ -184,7 +193,6 @@ function handleEvent(event) {
       }
     default:
     //throw new Error(`Unknown event: ${JSON.stringify(event)}`);
-
   }
 }
 
@@ -211,13 +219,6 @@ function handleLocation(message, replyToken) {
 function handleSticker(message, replyToken) {
   return replyText(replyToken, 'Got Sticker');
 }
-
-
-
-const port = config.port;
-app.listen(port, () => {
-  console.log(`listening on ${port}`);
-});
 
 function getDateTime(dateTime) {
   var today = new Date();
@@ -291,24 +292,7 @@ function writeLeaveStuData() {
   });
 }
 
-
-
-const replyCheckAllTime = (replyToken, texts,tx) => {
-  texts = Array.isArray(texts) ? texts : [texts];
-  var countMa = 0, countMaiMa = 0,countDod = 0,countSai = 0; 
-  var checkAll = "" ; 
-  for (var i = 0 ; i < tx.length; i++) {
-    if (i !== 0 ) {
-      switch(tx[i].checkName) {
-        case 0: countMaiMa += 1; break;
-        case 1: countMa += 1; break;
-        case 2: countSai += 1; break;
-        case 3: countDod += 1; break;
-        case 4: countDod += 1; break;
-      }
-    }
-  }
-  checkAll = "มาเรียน: " + countMa + " ครั้ง\nขาดเรียน: " + countMaiMa + " ครั้ง\nโดดเรียน: " + countDod + " ครั้ง\nมาสาย: " + countSai + " ครั้ง"
-  return client.replyMessage(replyToken, texts.map((text) =>
-    ({ 'type': 'text', 'text': checkAll })));
-}
+const port = config.port;
+app.listen(port, () => {
+  console.log(`listening on ${port}`);
+});
