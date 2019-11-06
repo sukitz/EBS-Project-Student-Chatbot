@@ -214,9 +214,6 @@ function handleSticker(message, replyToken) {
 
 
 
-
-
-
 const port = config.port;
 app.listen(port, () => {
   console.log(`listening on ${port}`);
@@ -259,7 +256,7 @@ function writeArriveStuData(replyToken, text) {
         });
       } else if (stuStatus == 4) {
         firebase.database().ref('Check').child(userId).child(numOfClass).update({
-          "checkName": "2"
+          "checkName": 2
         });
       }
     });
@@ -282,13 +279,13 @@ function writeArriveStuData(replyToken, text) {
 function writeLeaveStuData() {
   database.ref('Check').child(userId).child(numOfClass).child('checkName').once('value', function (snapshot) {
     stuStatus = snapshot.val();
-    if (stuStatus == "1") {
+    if (stuStatus == 1) {
       database.ref('Check').child(userId).child(numOfClass).update({
-        "checkName": "3"
+        "checkName": 3
       });
-    } else if (stuStatus == "2") {
+    } else if (stuStatus == 2) {
       database.ref('Check').child(userId).child(numOfClass).update({
-        "checkName": "4"
+        "checkName": 4
       });
     }
   });
@@ -311,7 +308,7 @@ const replyCheckAllTime = (replyToken, texts,tx) => {
       }
     }
   }
-  checkAll = "มาเรียน : " + countMa + " ครั้ง \nขาด : " + countMaiMa + " ครั้ง \nโดด : " + countDod + " ครั้ง \nสาย " + countSai + " ครั้ง"
+  checkAll = "มาเรียน: " + countMa + " ครั้ง\nขาดเรียน: " + countMaiMa + " ครั้ง\nโดดเรียน: " + countDod + " ครั้ง\nมาสาย: " + countSai + " ครั้ง"
   return client.replyMessage(replyToken, texts.map((text) =>
     ({ 'type': 'text', 'text': checkAll })));
 }
