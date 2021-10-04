@@ -38,23 +38,23 @@ var tx = "";
 
 var schedule = require('node-schedule');
 
-var firebaseConfig = {
+const firebaseConfig = {
   apiKey: "AIzaSyDfAcyKxRMKxMQ_g3Ho6Cy4r5-vVUIjLOw",
   authDomain: "checkthestudentname.firebaseapp.com",
   databaseURL: "https://checkthestudentname.firebaseio.com",
   storageBucket: "checkthestudentname.appspot.com"
 };
 firebase.initializeApp(firebaseConfig);
-var database = firebase.database();
+const database = firebase.database();
 
 var beacon_state;
-var getallUID = database.ref('userId').on('value',function(snapshot) {
+const getallUID = database.ref('userId').on('value',function(snapshot) {
       var UID = snapshot.val();
       for(var eachUID in UID) {
         allUID.push(eachUID)
       }
   }) 
-var get_beacon = database.ref('statusBeacon').on('value', function (snapshot) {
+const get_beacon = database.ref('statusBeacon').on('value', function (snapshot) {
   beacon_state = snapshot.val();
   if (beacon_state == "poweredOn") {
     var getStartAndEnd = database.ref('Date').once('value', function (snapshot) {
